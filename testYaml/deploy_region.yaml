@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-region
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      run: nginx-region
+  template:
+    metadata:
+      labels:
+        run: nginx-region
+    spec:
+      schedulerName: godel-scheduler
+      containers:
+      - name: nginx
+        image: nginx:1.17.1
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution: 
+          - topologyKey: kubernetes.io/region
+      

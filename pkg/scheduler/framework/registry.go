@@ -25,6 +25,7 @@ import (
 	schedulerconfig "github.com/kubewharf/godel-scheduler/pkg/scheduler/apis/config"
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/framework/plugins/coscheduling"
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/framework/plugins/imagelocality"
+	lesstopology "github.com/kubewharf/godel-scheduler/pkg/scheduler/framework/plugins/lesstopologykey"
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/framework/plugins/loadaware"
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/framework/plugins/nodeaffinity"
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/framework/plugins/nodelabel"
@@ -63,6 +64,7 @@ func NewOrderedPluginRegistry() framework.PluginList {
 		Plugins: []string{
 			// only UnschedulableAndUnresolvable
 			nodeaffinity.Name,
+			lesstopology.Name,
 			tainttoleration.Name,
 			nodeunschedulable.Name,
 			podlauncher.Name,
@@ -100,6 +102,7 @@ func NewInTreeRegistry() Registry {
 		nodepreferavoidpods.Name:                nodepreferavoidpods.New,
 		tainttoleration.Name:                    tainttoleration.New,
 		nodeaffinity.Name:                       nodeaffinity.New,
+		lesstopology.Name:                       lesstopology.New,
 		nodelabel.Name:                          nodelabel.New,
 		nodeports.Name:                          nodeports.New,
 		podlauncher.Name:                        podlauncher.New,

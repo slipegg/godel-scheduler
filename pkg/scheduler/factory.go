@@ -30,6 +30,7 @@ import (
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/apis/config"
 	godelcache "github.com/kubewharf/godel-scheduler/pkg/scheduler/cache"
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/framework/plugins/coscheduling"
+	lesstopology "github.com/kubewharf/godel-scheduler/pkg/scheduler/framework/plugins/lesstopologykey"
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/framework/plugins/nodeaffinity"
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/framework/plugins/nodeports"
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/framework/plugins/noderesources"
@@ -58,6 +59,7 @@ func basePluginsForKubelet() *framework.PluginCollection {
 			framework.NewPluginSpec(nodeports.Name),
 			framework.NewPluginSpec(volumebinding.Name),
 			framework.NewPluginSpec(nodeaffinity.Name),
+			framework.NewPluginSpec(lesstopology.Name),
 			framework.NewPluginSpec(tainttoleration.Name),
 		},
 		Searchings: []*framework.VictimSearchingPluginCollectionSpec{
@@ -108,6 +110,9 @@ func basePluginsForKubelet() *framework.PluginCollection {
 			framework.NewPluginSpec(victimscount.LeastVictimsName),
 			framework.NewPluginSpec(starttime.LatestEarliestStartTimeName),
 		},
+		Scores: []*framework.PluginSpec{
+			framework.NewPluginSpec(lesstopology.Name),
+		},
 	}
 	return &basicPlugins
 }
@@ -122,6 +127,7 @@ func basePluginsForNodeManager() *framework.PluginCollection {
 			framework.NewPluginSpec(nodeports.Name),
 			framework.NewPluginSpec(volumebinding.Name),
 			framework.NewPluginSpec(nodeaffinity.Name),
+			framework.NewPluginSpec(lesstopology.Name),
 			framework.NewPluginSpec(tainttoleration.Name),
 		},
 	}

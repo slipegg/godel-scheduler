@@ -118,7 +118,7 @@ func (pl *LessTopologyKey) PreScore(_ context.Context, cycleState *framework.Cyc
 			state.topologyScore[value] += int64(nodeInfo.NumPods())
 		}
 	}
-	klog.V(1).InfoS("LessTopologyKey preScoreState: ", "state", state)
+	klog.V(1).InfoS("LessTopologyKey preScoreState: ", "state.topologyScore", state.topologyScore)
 	cycleState.Write(preScoreStateKey, state)
 	return nil
 }
@@ -158,6 +158,7 @@ func (pl *LessTopologyKey) Score(ctx context.Context, state *framework.CycleStat
 		return framework.MaxNodeScore, framework.AsStatus(err)
 	}
 	if value, exist := node.Labels[lessTopologyKey]; exist {
+		klog.V(1).InfoS("LessTopologyKey Score For Node: ", "node", node.Name, "lessTopologyKey", lessTopologyKey, "value", value, "score", preScoreState.topologyScore[value])
 		return preScoreState.topologyScore[value], nil
 	} else {
 		return framework.MaxNodeScore, nil

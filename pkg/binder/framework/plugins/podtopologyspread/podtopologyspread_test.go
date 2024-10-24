@@ -28,6 +28,7 @@ import (
 	pt "github.com/kubewharf/godel-scheduler/pkg/binder/testing"
 	commoncache "github.com/kubewharf/godel-scheduler/pkg/common/cache"
 	framework "github.com/kubewharf/godel-scheduler/pkg/framework/api"
+	nodeInfoHelper "github.com/kubewharf/godel-scheduler/pkg/plugins/helper"
 	utils "github.com/kubewharf/godel-scheduler/pkg/plugins/podtopologyspread"
 	testing_helper "github.com/kubewharf/godel-scheduler/pkg/testing-helper"
 	v1 "k8s.io/api/core/v1"
@@ -371,10 +372,12 @@ func TestCheckConflictsForSingleConstraint(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			cs := framework.NewCycleState()
+			nodeInfoHelper.WriteAllNodeInfos(cs, frameworkHandle)
 
 			for _, node := range tt.nodes {
 				nodeInfo := frameworkHandle.GetNodeInfo(node.Name)
-				gotStatus := pl.(framework.CheckConflictsPlugin).CheckConflicts(context.Background(), nil, tt.pod, nodeInfo)
+				gotStatus := pl.(framework.CheckTopologyPlugin).CheckTopology(context.Background(), cs, tt.pod, nodeInfo)
 				if len(tt.wantStatusCode) != 0 && gotStatus.Code() != tt.wantStatusCode[node.Name] {
 					t.Errorf("[%s]: expected error code %v got %v", node.Name, tt.wantStatusCode[node.Name], gotStatus.Code())
 				}
@@ -600,10 +603,12 @@ func TestCheckConflictsForMultipleConstraint(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			cs := framework.NewCycleState()
+			nodeInfoHelper.WriteAllNodeInfos(cs, frameworkHandle)
 
 			for _, node := range tt.nodes {
 				nodeInfo := frameworkHandle.GetNodeInfo(node.Name)
-				gotStatus := pl.(framework.CheckConflictsPlugin).CheckConflicts(context.Background(), nil, tt.pod, nodeInfo)
+				gotStatus := pl.(framework.CheckTopologyPlugin).CheckTopology(context.Background(), cs, tt.pod, nodeInfo)
 				if len(tt.wantStatusCode) != 0 && gotStatus.Code() != tt.wantStatusCode[node.Name] {
 					t.Errorf("[%s]: expected error code %v got %v", node.Name, tt.wantStatusCode[node.Name], gotStatus.Code())
 				}

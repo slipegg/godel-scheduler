@@ -23,18 +23,17 @@ import (
 	"github.com/kubewharf/godel-scheduler/pkg/binder/framework/handle"
 	framework "github.com/kubewharf/godel-scheduler/pkg/framework/api"
 	"github.com/kubewharf/godel-scheduler/pkg/plugins/helper"
+	nodeInfoHelper "github.com/kubewharf/godel-scheduler/pkg/plugins/helper"
 	"github.com/kubewharf/godel-scheduler/pkg/plugins/podlauncher"
 	utils "github.com/kubewharf/godel-scheduler/pkg/plugins/podtopologyspread"
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/apis/config"
 	"github.com/kubewharf/godel-scheduler/pkg/scheduler/apis/validation"
-	podutil "github.com/kubewharf/godel-scheduler/pkg/util/pod"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
-	Name = "PodTopologySpreadCheck"
+	Name = "PodTopologySpreadCheck" //Name
 )
 
 type TopologySpreadCondition struct {
@@ -48,13 +47,13 @@ type PodTopologySpreadCheck struct {
 	frameworkHandle handle.BinderFrameworkHandle
 }
 
-var _ framework.CheckConflictsPlugin = &PodTopologySpreadCheck{}
+var _ framework.CheckTopologyPlugin = &PodTopologySpreadCheck{}
 
 func (pl *PodTopologySpreadCheck) Name() string {
 	return Name
 }
 
-func (pl *PodTopologySpreadCheck) CheckConflicts(_ context.Context, cycleState *framework.CycleState, pod *v1.Pod, nodeInfo framework.NodeInfo) *framework.Status {
+func (pl *PodTopologySpreadCheck) CheckTopology(_ context.Context, cycleState *framework.CycleState, pod *v1.Pod, nodeInfo framework.NodeInfo) *framework.Status {
 	podLauncher, status := podlauncher.NodeFits(cycleState, pod, nodeInfo)
 	if status != nil {
 		return status
@@ -68,10 +67,11 @@ func (pl *PodTopologySpreadCheck) CheckConflicts(_ context.Context, cycleState *
 		return nil
 	}
 
-	nodeInfos, err := pl.getAllNodeInfos(podLauncher)
+	nodeInfos, err := nodeInfoHelper.ReadAllNodeInfos(cycleState)
 	if err != nil {
 		return framework.NewStatus(framework.Error, err.Error())
 	}
+
 	state := utils.GetPreFilterState(pod, nodeInfos, constraints)
 
 	return utils.IsSatisfyPodTopologySpreadConstraints(&state, pod, nodeInfo, podLauncher)
@@ -137,33 +137,4 @@ func (pl *PodTopologySpreadCheck) getConstraints(pod *v1.Pod) ([]utils.TopologyS
 	}
 
 	return constraints, nil
-}
-
-func (pl *PodTopologySpreadCheck) getAllNodeInfos(podLauncher podutil.PodLauncher) ([]framework.NodeInfo, error) {
-	if podLauncher == podutil.Kubelet {
-		allV1Nodes, err := pl.frameworkHandle.SharedInformerFactory().Core().V1().Nodes().Lister().List(labels.Everything())
-		if err != nil {
-			return nil, err
-		}
-
-		nodeInfos := make([]framework.NodeInfo, 0, len(allV1Nodes))
-		for _, node := range allV1Nodes {
-			nodeInfos = append(nodeInfos, pl.frameworkHandle.GetNodeInfo(node.Name))
-		}
-
-		return nodeInfos, nil
-	} else if podLauncher == podutil.NodeManager {
-		allNMNodes, err := pl.frameworkHandle.CRDSharedInformerFactory().Node().V1alpha1().NMNodes().Lister().List(labels.Everything())
-		if err != nil {
-			return nil, err
-		}
-
-		nodeInfos := make([]framework.NodeInfo, 0, len(allNMNodes))
-		for _, node := range allNMNodes {
-			nodeInfos = append(nodeInfos, pl.frameworkHandle.GetNodeInfo(node.Name))
-		}
-
-		return nodeInfos, nil
-	}
-	return nil, fmt.Errorf("unsupported pod launcher: %v", podLauncher)
 }

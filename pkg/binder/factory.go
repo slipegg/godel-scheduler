@@ -69,14 +69,15 @@ func DefaultUnitQueueSortFunc() framework.UnitLessFunc {
 func NewBasePlugins(victimsCheckingPlugins []*framework.VictimCheckingPluginCollectionSpec) *apis.BinderPluginCollection {
 	// TODO add some default plugins later
 	basicPlugins := apis.BinderPluginCollection{
-		CheckTopology: []string{},
+		CheckTopology: []string{
+			interpodaffinity.Name,
+			podtopologyspread.Name,
+		},
 		CheckConflicts: []string{
 			noderesources.ConflictCheckName,
 			nodevolumelimits.CSIName,
 			volumebinding.Name,
 			nodeports.Name,
-			interpodaffinity.Name,
-			podtopologyspread.Name,
 		},
 		Permits: []string{},
 		Binds: []string{

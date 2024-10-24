@@ -50,6 +50,7 @@ import (
 	"github.com/kubewharf/godel-scheduler/pkg/features"
 	framework "github.com/kubewharf/godel-scheduler/pkg/framework/api"
 	"github.com/kubewharf/godel-scheduler/pkg/framework/utils"
+	nodeInfoHelper "github.com/kubewharf/godel-scheduler/pkg/plugins/helper"
 	"github.com/kubewharf/godel-scheduler/pkg/plugins/nonnativeresource"
 	"github.com/kubewharf/godel-scheduler/pkg/util"
 	"github.com/kubewharf/godel-scheduler/pkg/util/helper"
@@ -435,6 +436,11 @@ func (binder *Binder) CheckCrossNodeTopologyForUnit(ctx context.Context, unitInf
 	commonState := framework.NewCycleState()
 	// TODO
 	// Step 1: PrepareCommonState
+
+	err := nodeInfoHelper.WriteAllNodeInfos(commonState, binder.handle)
+	if err != nil {
+		return err
+	}
 
 	for _, newTask := range unitInfo.GetNewTasks() {
 		nodeName := newTask.suggestedNode

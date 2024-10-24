@@ -26,6 +26,7 @@ import (
 	pt "github.com/kubewharf/godel-scheduler/pkg/binder/testing"
 	commoncache "github.com/kubewharf/godel-scheduler/pkg/common/cache"
 	framework "github.com/kubewharf/godel-scheduler/pkg/framework/api"
+	nodeInfoHelper "github.com/kubewharf/godel-scheduler/pkg/plugins/helper"
 	utils "github.com/kubewharf/godel-scheduler/pkg/plugins/interpodaffinity"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -848,8 +849,10 @@ func TestRequiredAffinitySingleNode(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			cs := framework.NewCycleState()
+			nodeInfoHelper.WriteAllNodeInfos(cs, frameworkHandle)
 
-			gotStatus := p.(framework.CheckConflictsPlugin).CheckConflicts(context.Background(), nil, tt.pod, tt.nodeInfo)
+			gotStatus := p.(framework.CheckTopologyPlugin).CheckTopology(context.Background(), cs, tt.pod, tt.nodeInfo)
 			if !reflect.DeepEqual(gotStatus, tt.wantStatus) {
 				t.Errorf("status does not match: %v, want: %v", gotStatus, tt.wantStatus)
 			}
@@ -1733,10 +1736,12 @@ func TestRequiredAffinityMultipleNodes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			cs := framework.NewCycleState()
+			nodeInfoHelper.WriteAllNodeInfos(cs, frameworkHandle)
 
 			for i, node := range tt.nodes {
 				nodeInfo := frameworkHandle.GetNodeInfo(node.Name)
-				gotStatus := p.(framework.CheckConflictsPlugin).CheckConflicts(context.Background(), nil, tt.pod, nodeInfo)
+				gotStatus := p.(framework.CheckTopologyPlugin).CheckTopology(context.Background(), cs, tt.pod, nodeInfo)
 				if !reflect.DeepEqual(gotStatus, tt.wantStatuses[i]) {
 					t.Errorf("status does not match: %v, want: %v", gotStatus, tt.wantStatuses[i])
 				}

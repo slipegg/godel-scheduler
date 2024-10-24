@@ -216,3 +216,7 @@ func (c *Cache) UpdateMovement(oldMovement, newMovement *schedulingv1a1.Movement
 func (c *Cache) DeleteMovement(movement *schedulingv1a1.Movement) error {
 	return nil
 }
+
+func (c *Cache) List() []framework.NodeInfo {
+	return nil
+}

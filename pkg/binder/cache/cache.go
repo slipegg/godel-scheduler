@@ -33,6 +33,7 @@ import (
 	commoncache "github.com/kubewharf/godel-scheduler/pkg/common/cache"
 	commonstore "github.com/kubewharf/godel-scheduler/pkg/common/store"
 	framework "github.com/kubewharf/godel-scheduler/pkg/framework/api"
+	schedulerCache "github.com/kubewharf/godel-scheduler/pkg/scheduler/cache"
 	unitstatus "github.com/kubewharf/godel-scheduler/pkg/util/unitstatus"
 )
 
@@ -52,18 +53,27 @@ type binderCache struct {
 
 	handler commoncache.CacheHandler
 	mu      *sync.RWMutex
+
+	nodeSlices *schedulerCache.NodeSlices
 }
 
 func newBinderCache(handler commoncache.CacheHandler) *binderCache {
+	nodeSlices := schedulerCache.NewNodeSlices()
+
 	bc := &binderCache{
 		CommonStoresSwitch: commonstore.MakeStoreSwitch(handler, commonstore.Cache, commonstores.GlobalRegistries, orderedStoreNames),
 
 		handler: handler,
 		mu:      handler.Mutex(),
+
+		nodeSlices: nodeSlices,
 	}
 
 	// NodeStore and PodStore are mandatory, so we don't care if they are nil.
 	nodeStore, podStore := bc.CommonStoresSwitch.Find(nodestore.Name), bc.CommonStoresSwitch.Find(podstore.Name)
+	nodeStore.(*nodestore.NodeStore).AfterAdd = func(n framework.NodeInfo) { nodeSlices.Update(n, true) }
+	nodeStore.(*nodestore.NodeStore).AfterDelete = func(n framework.NodeInfo) { nodeSlices.Update(n, false) }
+
 	handler.SetNodeHandler(nodeStore.(*nodestore.NodeStore).GetNodeInfo)
 	handler.SetPodHandler(podStore.(*podstore.PodStore).GetPodState)
 
@@ -209,4 +219,8 @@ func (cache *binderCache) FindStore(storeName commonstore.StoreName) commonstore
 	cache.mu.RLock()
 	defer cache.mu.RUnlock()
 	return cache.CommonStoresSwitch.Find(storeName)
+}
+
+func (cache *binderCache) List() []framework.NodeInfo {
+	return append(cache.nodeSlices.InPartitionNodeSlice.Nodes(), cache.nodeSlices.OutOfPartitionNodeSlice.Nodes()...)
 }

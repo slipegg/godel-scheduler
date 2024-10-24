@@ -80,35 +80,7 @@ func GetAllNodeInfos(frameworkHandle handle.BinderFrameworkHandle) (*AllNodeInfo
 }
 
 func WriteAllNodeInfos(cycleState *framework.CycleState, frameworkHandle handle.BinderFrameworkHandle) error {
-	nodeInfoMap := map[string]framework.NodeInfo{}
-	for _, podLauncher := range podutil.PodLanucherTypes {
-		if podLauncher == podutil.Kubelet && frameworkHandle.SharedInformerFactory() != nil {
-			allV1Nodes, err := frameworkHandle.SharedInformerFactory().Core().V1().Nodes().Lister().List(labels.Everything())
-			if err != nil {
-				return err
-			}
-
-			for _, node := range allV1Nodes {
-				nodeInfo := frameworkHandle.GetNodeInfo(node.Name)
-				nodeInfoMap[nodeInfo.GetNodeName()] = nodeInfo
-			}
-		} else if podLauncher == podutil.NodeManager && frameworkHandle.CRDSharedInformerFactory() != nil {
-			allNMNodes, err := frameworkHandle.CRDSharedInformerFactory().Node().V1alpha1().NMNodes().Lister().List(labels.Everything())
-			if err != nil {
-				return err
-			}
-
-			for _, node := range allNMNodes {
-				nodeInfo := frameworkHandle.GetNodeInfo(node.Name)
-				nodeInfoMap[nodeInfo.GetNodeName()] = nodeInfo
-			}
-		}
-	}
-
-	nodeInfos := make([]framework.NodeInfo, 0, len(nodeInfoMap))
-	for _, nodeInfo := range nodeInfoMap {
-		nodeInfos = append(nodeInfos, nodeInfo)
-	}
+	nodeInfos := frameworkHandle.ListNodeInfos()
 
 	allNodeInfoData := &AllNodeInfos{
 		NodeInfos: nodeInfos,

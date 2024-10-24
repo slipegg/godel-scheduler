@@ -36,14 +36,14 @@ type Snapshot struct {
 
 	handler commoncache.CacheHandler
 
-	nodeSlices *nodeSlices
+	nodeSlices *NodeSlices
 }
 
 var _ framework.SharedLister = &Snapshot{}
 
 // NewEmptySnapshot initializes a Snapshot struct and returns it.
 func NewEmptySnapshot(handler commoncache.CacheHandler) *Snapshot {
-	nodeSlices := newNodeSlices()
+	nodeSlices := NewNodeSlices()
 
 	s := &Snapshot{
 		CommonStoresSwitch: commonstore.MakeStoreSwitch(handler, commonstore.Snapshot, commonstores.GlobalRegistries, orderedStoreNames),
@@ -53,8 +53,8 @@ func NewEmptySnapshot(handler commoncache.CacheHandler) *Snapshot {
 		nodeSlices: nodeSlices,
 	}
 	nodeStore := s.CommonStoresSwitch.Find(nodestore.Name)
-	nodeStore.(*nodestore.NodeStore).AfterAdd = func(n framework.NodeInfo) { nodeSlices.update(n, true) }
-	nodeStore.(*nodestore.NodeStore).AfterDelete = func(n framework.NodeInfo) { nodeSlices.update(n, false) }
+	nodeStore.(*nodestore.NodeStore).AfterAdd = func(n framework.NodeInfo) { nodeSlices.Update(n, true) }
+	nodeStore.(*nodestore.NodeStore).AfterDelete = func(n framework.NodeInfo) { nodeSlices.Update(n, false) }
 
 	handler.SetNodeHandler(nodeStore.(*nodestore.NodeStore).GetNodeInfo)
 	handler.SetPodOpFunc(podOpFunc(s.CommonStoresSwitch))
@@ -90,7 +90,7 @@ func (s *Snapshot) NodeInfos() framework.NodeInfoLister {
 // Note: Snapshot operations are lock-free. Our premise for removing lock: even if read operations
 // are concurrent, write operations(AssumePod/ForgetPod/AddOneVictim) should always be serial.
 func (s *Snapshot) NumNodes() int {
-	return s.nodeSlices.inPartitionNodeSlice.Len() + s.nodeSlices.outOfPartitionNodeSlice.Len()
+	return s.nodeSlices.InPartitionNodeSlice.Len() + s.nodeSlices.OutOfPartitionNodeSlice.Len()
 }
 
 // List returns the list of nodes in the snapshot.
@@ -98,14 +98,14 @@ func (s *Snapshot) NumNodes() int {
 // Note: Snapshot operations are lock-free. Our premise for removing lock: even if read operations
 // are concurrent, write operations(AssumePod/ForgetPod/AddOneVictim) should always be serial.
 func (s *Snapshot) List() []framework.NodeInfo {
-	return append(s.nodeSlices.inPartitionNodeSlice.Nodes(), s.nodeSlices.outOfPartitionNodeSlice.Nodes()...)
+	return append(s.nodeSlices.InPartitionNodeSlice.Nodes(), s.nodeSlices.OutOfPartitionNodeSlice.Nodes()...)
 }
 
 // InPartitionList returns the list of nodes which are in the partition of the scheduler
 // Note: Snapshot operations are lock-free. Our premise for removing lock: even if read operations
 // are concurrent, write operations(AssumePod/ForgetPod/AddOneVictim) should always be serial.
 func (s *Snapshot) InPartitionList() []framework.NodeInfo {
-	return s.nodeSlices.inPartitionNodeSlice.Nodes()
+	return s.nodeSlices.InPartitionNodeSlice.Nodes()
 }
 
 // OutOfPartitionList returns the list of nodes which are out of the partition of the scheduler
@@ -113,7 +113,7 @@ func (s *Snapshot) InPartitionList() []framework.NodeInfo {
 // Note: Snapshot operations are lock-free. Our premise for removing lock: even if read operations
 // are concurrent, write operations(AssumePod/ForgetPod/AddOneVictim) should always be serial.
 func (s *Snapshot) OutOfPartitionList() []framework.NodeInfo {
-	return s.nodeSlices.outOfPartitionNodeSlice.Nodes()
+	return s.nodeSlices.OutOfPartitionNodeSlice.Nodes()
 }
 
 // HavePodsWithAffinityList returns the list of nodes with at least one pod with inter-pod affinity
@@ -121,7 +121,7 @@ func (s *Snapshot) OutOfPartitionList() []framework.NodeInfo {
 // Note: Snapshot operations are lock-free. Our premise for removing lock: even if read operations
 // are concurrent, write operations(AssumePod/ForgetPod/AddOneVictim) should always be serial.
 func (s *Snapshot) HavePodsWithAffinityList() []framework.NodeInfo {
-	return s.nodeSlices.havePodsWithAffinityNodeSlice.Nodes()
+	return s.nodeSlices.HavePodsWithAffinityNodeSlice.Nodes()
 }
 
 // HavePodsWithRequiredAntiAffinityList returns the list of nodes with at least one pod with
@@ -130,7 +130,7 @@ func (s *Snapshot) HavePodsWithAffinityList() []framework.NodeInfo {
 // Note: Snapshot operations are lock-free. Our premise for removing lock: even if read operations
 // are concurrent, write operations(AssumePod/ForgetPod/AddOneVictim) should always be serial.
 func (s *Snapshot) HavePodsWithRequiredAntiAffinityList() []framework.NodeInfo {
-	return s.nodeSlices.havePodsWithRequiredAntiAffinityNodeSlice.Nodes()
+	return s.nodeSlices.HavePodsWithRequiredAntiAffinityNodeSlice.Nodes()
 }
 
 // Get returns the NodeInfo of the given node name.
@@ -168,19 +168,19 @@ func (s *Snapshot) FindStore(storeName commonstore.StoreName) commonstore.Store 
 
 // -------------------------------------- node slice for snapshot --------------------------------------
 
-type nodeSlices struct {
-	inPartitionNodeSlice                      framework.NodeHashSlice
-	outOfPartitionNodeSlice                   framework.NodeHashSlice
-	havePodsWithAffinityNodeSlice             framework.NodeHashSlice
-	havePodsWithRequiredAntiAffinityNodeSlice framework.NodeHashSlice
+type NodeSlices struct {
+	InPartitionNodeSlice                      framework.NodeHashSlice
+	OutOfPartitionNodeSlice                   framework.NodeHashSlice
+	HavePodsWithAffinityNodeSlice             framework.NodeHashSlice
+	HavePodsWithRequiredAntiAffinityNodeSlice framework.NodeHashSlice
 }
 
-func newNodeSlices() *nodeSlices {
-	return &nodeSlices{
-		inPartitionNodeSlice:                      framework.NewNodeHashSlice(),
-		outOfPartitionNodeSlice:                   framework.NewNodeHashSlice(),
-		havePodsWithAffinityNodeSlice:             framework.NewNodeHashSlice(),
-		havePodsWithRequiredAntiAffinityNodeSlice: framework.NewNodeHashSlice(),
+func NewNodeSlices() *NodeSlices {
+	return &NodeSlices{
+		InPartitionNodeSlice:                      framework.NewNodeHashSlice(),
+		OutOfPartitionNodeSlice:                   framework.NewNodeHashSlice(),
+		HavePodsWithAffinityNodeSlice:             framework.NewNodeHashSlice(),
+		HavePodsWithRequiredAntiAffinityNodeSlice: framework.NewNodeHashSlice(),
 	}
 }
 
@@ -192,21 +192,21 @@ func op(slice framework.NodeHashSlice, n framework.NodeInfo, isAdd bool) {
 	}
 }
 
-func (s *nodeSlices) update(n framework.NodeInfo, isAdd bool) {
+func (s *NodeSlices) Update(n framework.NodeInfo, isAdd bool) {
 	// ATTENTION: We should ensure that the `globalNodeInfoPlaceHolder` will not be added to nodelice.
 	if n == nodestore.GlobalNodeInfoPlaceHolder {
 		return
 	}
 
 	if n.GetNodeInSchedulerPartition() || n.GetNMNodeInSchedulerPartition() {
-		op(s.inPartitionNodeSlice, n, isAdd)
+		op(s.InPartitionNodeSlice, n, isAdd)
 	} else {
-		op(s.outOfPartitionNodeSlice, n, isAdd)
+		op(s.OutOfPartitionNodeSlice, n, isAdd)
 	}
 	if len(n.GetPodsWithAffinity()) > 0 {
-		op(s.havePodsWithAffinityNodeSlice, n, isAdd)
+		op(s.HavePodsWithAffinityNodeSlice, n, isAdd)
 	}
 	if len(n.GetPodsWithRequiredAntiAffinity()) > 0 {
-		op(s.havePodsWithRequiredAntiAffinityNodeSlice, n, isAdd)
+		op(s.HavePodsWithRequiredAntiAffinityNodeSlice, n, isAdd)
 	}
 }
